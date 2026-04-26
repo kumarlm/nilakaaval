@@ -6,7 +6,7 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Bhoomi Watch — TN Land Monitor",
+  title: "Nilakaaval — Tamil Nadu Land Guard",
   description:
     "Periodic monitoring of restricted land parcels in Tamil Nadu using high-resolution satellite imagery and change detection.",
 };

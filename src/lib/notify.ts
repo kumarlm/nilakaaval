@@ -31,7 +31,7 @@ export async function sendAlertEmail(
 <html><body style="font-family:system-ui,sans-serif;color:#0f172a;background:#f8fafc;padding:24px">
   <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden">
     <div style="background:#0d6e54;color:#fff;padding:16px 20px">
-      <div style="font-size:12px;opacity:.85">Bhoomi Watch — TN Land Monitor</div>
+      <div style="font-size:12px;opacity:.85">Nilakaaval — Tamil Nadu Land Guard</div>
       <div style="font-size:18px;font-weight:600;margin-top:2px">Possible change detected</div>
     </div>
     <div style="padding:20px">
@@ -47,7 +47,7 @@ export async function sendAlertEmail(
           : ""
       }
       <p style="margin:20px 0 0">
-        <a href="${ctx.parcelLink}" style="display:inline-block;background:#0d6e54;color:#fff;text-decoration:none;font-weight:500;padding:10px 18px;border-radius:6px">Review in Bhoomi Watch →</a>
+        <a href="${ctx.parcelLink}" style="display:inline-block;background:#0d6e54;color:#fff;text-decoration:none;font-weight:500;padding:10px 18px;border-radius:6px">Review in Nilakaaval →</a>
       </p>
       <p style="margin:24px 0 0;font-size:12px;color:#64748b">
         This is an automated alert. Verify before acting on it — the system
@@ -66,7 +66,7 @@ export async function sendAlertEmail(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: process.env.ALERT_FROM_EMAIL || "Bhoomi Watch <onboarding@resend.dev>",
+      from: process.env.ALERT_FROM_EMAIL || "Nilakaaval <onboarding@resend.dev>",
       to: ctx.recipients,
       subject,
       html,

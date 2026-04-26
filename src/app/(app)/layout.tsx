@@ -42,9 +42,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <div className="px-4 py-4 border-b border-[var(--border)]">
           <Link href="/dashboard" className="flex items-center gap-2">
             <div className="h-8 w-8 rounded bg-[var(--primary)] grid place-items-center text-[var(--primary-fg)] font-bold">
-              பூ
+              நி
             </div>
-            <span className="font-semibold">Bhoomi Watch</span>
+            <span className="font-semibold">Nilakaaval</span>
           </Link>
         </div>
         <nav className="flex-1 p-3 space-y-1 text-sm">

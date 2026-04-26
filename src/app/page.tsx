@@ -15,9 +15,9 @@ export default async function Home() {
         <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded bg-[var(--primary)] grid place-items-center text-[var(--primary-fg)] font-bold">
-              பூ
+              நி
             </div>
-            <span className="font-semibold tracking-tight">Bhoomi Watch</span>
+            <span className="font-semibold tracking-tight">Nilakaaval</span>
           </div>
           {supabase ? (
             <div className="flex items-center gap-2">

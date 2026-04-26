@@ -1,4 +1,6 @@
-# Bhoomi Watch — Tamil Nadu Land Monitor
+# Nilakaaval *(நிலக்காவல்)* — Tamil Nadu Land Guard
+
+> *Nilakaaval* is Tamil for "Land Guard" — நிலம் (land) + காவல் (guard / watch).
 
 A web tool that helps government authorities mark **restricted land parcels**
 (reserved forest, water bodies, poromboke, temple land, CRZ, etc.) and
@@ -16,7 +18,7 @@ emailing the right people when something changes.
 
 Imagine a Tahsildar or VAO who wants to keep an eye on a few hundred
 restricted parcels across a taluk. Driving out to inspect each one weekly is
-impossible. **Bhoomi Watch** automates that:
+impossible. **Nilakaaval** automates that:
 
 1. **Mark** — the official draws each restricted parcel on a satellite map
    and tags it with district / taluk / village / survey number / restriction
