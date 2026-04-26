@@ -24,6 +24,7 @@ export default function UploadSnapshot({
     alertId?: string;
     processError?: string;
     snapshotId?: string;
+    email?: { sent: boolean; reason?: string; recipients: string[] };
   }>(null);
 
   if (!canUpload) return null;
@@ -52,6 +53,7 @@ export default function UploadSnapshot({
         alertId: body.alertId,
         processError: body.processError,
         snapshotId: body.snapshotId,
+        email: body.email,
       });
       router.refresh();
     } catch (e) {
@@ -148,10 +150,25 @@ export default function UploadSnapshot({
                         )}
                       </div>
                       {result.alertId ? (
-                        <div className="text-[var(--warning)]">
-                          ⚠ Alert created — see the Alerts section below or
-                          the Alerts page.
-                        </div>
+                        <>
+                          <div className="text-[var(--warning)]">
+                            ⚠ Alert created — see the Alerts section below or
+                            the Alerts page.
+                          </div>
+                          {result.email && (
+                            <div
+                              className={
+                                result.email.sent
+                                  ? "text-emerald-700"
+                                  : "text-[var(--danger)]"
+                              }
+                            >
+                              {result.email.sent
+                                ? `✉ Email sent to ${result.email.recipients.length} recipient${result.email.recipients.length === 1 ? "" : "s"}`
+                                : `✉ Email NOT sent: ${result.email.reason ?? "unknown"}`}
+                            </div>
+                          )}
+                        </>
                       ) : (
                         <div className="text-[var(--muted-fg)]">
                           No alert raised. To force one, upload an image that

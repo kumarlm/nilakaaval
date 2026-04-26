@@ -149,5 +149,6 @@ export async function POST(
     changeScore: result.score,
     severity: result.severity,
     alertId: result.alertId,
+    email: result.email,
   });
 }

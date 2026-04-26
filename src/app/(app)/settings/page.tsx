@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import EmailsForm from "./emails-form";
+import TestEmailButton from "./test-email-button";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -33,6 +34,15 @@ export default async function SettingsPage() {
           own secondary inbox.
         </p>
         <EmailsForm initialEmails={initialEmails} />
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-lg font-medium">Test email delivery</h2>
+        <p className="mt-1 text-sm text-[var(--muted-fg)]">
+          Send a one-off test email to verify recipients are reachable. If
+          this fails, real alert emails will too.
+        </p>
+        <TestEmailButton defaultTo={user?.email ?? ""} />
       </section>
     </main>
   );

@@ -1,4 +1,5 @@
 import "server-only";
+import nodemailer from "nodemailer";
 
 export type AlertEmailContext = {
   recipients: string[];
@@ -10,19 +11,102 @@ export type AlertEmailContext = {
   diffImageUrl?: string;
 };
 
+type SendOutcome = {
+  sent: boolean;
+  reason?: string;
+  recipients: string[];
+  via?: "gmail" | "resend";
+};
+
+/**
+ * Try, in order: Gmail SMTP → Resend → console log fallback.
+ *
+ * Gmail SMTP needs only a Gmail account + an "app password"
+ * (https://myaccount.google.com/apppasswords) — no verified domain
+ * required, ~500 messages/day. Resend's free tier requires a verified
+ * domain to send to anyone except yourself.
+ */
+async function sendEmail({
+  to,
+  subject,
+  html,
+}: {
+  to: string[];
+  subject: string;
+  html: string;
+}): Promise<{ sent: boolean; reason?: string; via?: "gmail" | "resend" }> {
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPass = process.env.GMAIL_APP_PASSWORD;
+  if (gmailUser && gmailPass) {
+    try {
+      const transport = nodemailer.createTransport({
+        service: "gmail",
+        auth: { user: gmailUser, pass: gmailPass },
+      });
+      const info = await transport.sendMail({
+        from: process.env.ALERT_FROM_EMAIL || `Nilakaaval <${gmailUser}>`,
+        to,
+        subject,
+        html,
+      });
+      console.log(
+        `[notify] gmail ok messageId=${info.messageId} → ${to.join(", ")}`,
+      );
+      return { sent: true, via: "gmail" };
+    } catch (e) {
+      const msg = (e as Error).message;
+      console.error("[notify] gmail send failed:", msg);
+      return { sent: false, reason: `gmail: ${msg}`, via: "gmail" };
+    }
+  }
+
+  const resendKey = process.env.RESEND_API_KEY;
+  if (resendKey) {
+    const from =
+      process.env.ALERT_FROM_EMAIL || "Nilakaaval <onboarding@resend.dev>";
+    try {
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ from, to, subject, html }),
+      });
+      if (!res.ok) {
+        const body = await res.text();
+        console.error(
+          `[notify] resend rejected ${res.status} from=${from} to=${to.join(",")} body=${body}`,
+        );
+        return {
+          sent: false,
+          reason: `resend ${res.status}: ${body.slice(0, 200)}`,
+          via: "resend",
+        };
+      }
+      console.log(`[notify] resend ok → ${to.join(", ")}`);
+      return { sent: true, via: "resend" };
+    } catch (e) {
+      const msg = (e as Error).message;
+      console.error("[notify] resend fetch failed:", msg);
+      return { sent: false, reason: `network: ${msg}`, via: "resend" };
+    }
+  }
+
+  console.log(
+    `[notify] no email backend configured (set GMAIL_USER+GMAIL_APP_PASSWORD or RESEND_API_KEY); would have emailed ${to.join(", ")}`,
+  );
+  return { sent: false, reason: "no email backend configured" };
+}
+
 export async function sendAlertEmail(
   ctx: AlertEmailContext,
-): Promise<{ sent: boolean; reason?: string }> {
-  if (ctx.recipients.length === 0) return { sent: false, reason: "no recipients" };
-
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) {
-    // Dev fallback — log so the developer can still test the trigger flow
-    // end-to-end without a Resend account.
+): Promise<SendOutcome> {
+  if (ctx.recipients.length === 0) {
     console.log(
-      `[notify] RESEND_API_KEY not set; would email ${ctx.recipients.join(", ")} about change at ${ctx.parcelName} (score=${(ctx.changeScore * 100).toFixed(1)}%)`,
+      "[notify] no recipients — alert created but no one to email. Add one under Settings → Alert recipients.",
     );
-    return { sent: false, reason: "RESEND_API_KEY not set" };
+    return { sent: false, reason: "no recipients", recipients: [] };
   }
 
   const subject = `[${ctx.severity.toUpperCase()}] Possible change at ${ctx.parcelName}`;
@@ -59,24 +143,19 @@ export async function sendAlertEmail(
   </div>
 </body></html>`;
 
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: process.env.ALERT_FROM_EMAIL || "Nilakaaval <onboarding@resend.dev>",
-      to: ctx.recipients,
-      subject,
-      html,
-    }),
-  });
+  const r = await sendEmail({ to: ctx.recipients, subject, html });
+  return { ...r, recipients: ctx.recipients };
+}
 
-  if (!res.ok) {
-    return { sent: false, reason: `resend ${res.status}: ${await res.text()}` };
-  }
-  return { sent: true };
+/** One-shot test email — Settings → Send test. */
+export async function sendTestEmail(
+  to: string,
+): Promise<{ sent: boolean; reason?: string; via?: "gmail" | "resend" }> {
+  return sendEmail({
+    to: [to],
+    subject: "Nilakaaval — test email",
+    html: `<p>This is a test email from Nilakaaval.</p><p>If you received this, alert delivery is working.</p>`,
+  });
 }
 
 function escapeHtml(s: string): string {

@@ -7,7 +7,13 @@ import { sendAlertEmail } from "@/lib/notify";
 const BUCKET = "snapshots";
 
 export type ProcessResult =
-  | { ok: true; alertId?: string; score: number; severity: string | null }
+  | {
+      ok: true;
+      alertId?: string;
+      score: number;
+      severity: string | null;
+      email?: { sent: boolean; reason?: string; recipients: string[] };
+    }
   | { ok: false; reason: string };
 
 /**
@@ -140,7 +146,7 @@ export async function processNewSnapshot(
 
   const origin =
     appOrigin || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  await sendAlertEmail({
+  const email = await sendAlertEmail({
     recipients: [...emails],
     parcelName: parcel.name,
     parcelLocation: `${parcel.village}, ${parcel.taluk}, ${parcel.district}`,
@@ -150,7 +156,13 @@ export async function processNewSnapshot(
     diffImageUrl,
   });
 
-  return { ok: true, alertId: alert.id, score: diff.score, severity };
+  return {
+    ok: true,
+    alertId: alert.id,
+    score: diff.score,
+    severity,
+    email,
+  };
 }
 
 async function fetchImage(url: string): Promise<Buffer> {
