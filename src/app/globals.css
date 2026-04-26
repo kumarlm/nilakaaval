@@ -1,26 +1,47 @@
 @import "tailwindcss";
+@import "maplibre-gl/dist/maplibre-gl.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --primary: #0d6e54;       /* Tamil Nadu green */
+  --primary-fg: #ffffff;
+  --muted: #e2e8f0;
+  --muted-fg: #475569;
+  --border: #cbd5e1;
+  --danger: #b91c1c;
+  --warning: #b45309;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-fg: var(--primary-fg);
+  --color-muted: var(--muted);
+  --color-muted-fg: var(--muted-fg);
+  --color-border: var(--border);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0b1220;
+    --foreground: #e2e8f0;
+    --muted: #1e293b;
+    --muted-fg: #94a3b8;
+    --border: #334155;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
 }
+
+.maplibregl-canvas:focus { outline: none; }
+.mapboxgl-ctrl-group, .maplibregl-ctrl-group { box-shadow: 0 1px 4px rgba(0,0,0,0.15) !important; }
