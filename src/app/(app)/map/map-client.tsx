@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import { createClient } from "@/lib/supabase/client";
-import { TN_CENTER, TN_DISTRICTS, RESTRICTION_TYPES } from "@/lib/tn-data";
+import { DEFAULT_CENTER, DISTRICTS, RESTRICTION_TYPES } from "@/lib/regions";
 import { satelliteStyle, streetsStyle } from "@/lib/map-style";
 import { useRouter } from "next/navigation";
 
@@ -52,7 +52,7 @@ export default function MapClient({
     notes: string;
   }>({
     name: "",
-    district: TN_DISTRICTS[0],
+    district: DISTRICTS[0],
     taluk: "",
     village: "",
     survey_no: "",
@@ -259,7 +259,7 @@ export default function MapClient({
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: satelliteStyle(),
-      center: TN_CENTER,
+      center: DEFAULT_CENTER,
       zoom: 7,
       doubleClickZoom: false, // we use dblclick to finish a polygon
     });
@@ -378,7 +378,7 @@ export default function MapClient({
     cancelDrawing();
     setForm({
       name: "",
-      district: TN_DISTRICTS[0],
+      district: DISTRICTS[0],
       taluk: "",
       village: "",
       survey_no: "",
@@ -464,7 +464,7 @@ export default function MapClient({
                   onChange={(e) => setForm({ ...form, district: e.target.value })}
                   className={inputCls}
                 >
-                  {TN_DISTRICTS.map((d) => (
+                  {DISTRICTS.map((d) => (
                     <option key={d} value={d}>
                       {d}
                     </option>

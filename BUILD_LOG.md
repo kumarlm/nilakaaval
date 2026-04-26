@@ -13,10 +13,10 @@ other personal information so it can be shared as a portfolio artefact.
 
 ### Original brief
 
-> Build a website to detect unauthorized construction on restricted lands in
-> Tamil Nadu. Use Google Maps to extract coordinates, take a picture of the
-> location, compare against the previous state with an ML model, and notify
-> via SMS/email. Host free on Vercel.
+> Build a website to detect unauthorized construction on restricted lands.
+> Use Google Maps to extract coordinates, take a picture of the location,
+> compare against the previous state with an ML model, and notify via
+> SMS/email. Host free on Vercel.
 
 ### Reality check
 
@@ -64,8 +64,8 @@ Key decisions:
   required" page when env is missing.
 - Initial schema (`0001_init.sql`):
   - `profiles` with `role` enum (`authority` | `viewer`).
-  - `parcels` with TN admin metadata (district / taluk / village / survey
-    no.) and the polygon as GeoJSON `jsonb`.
+  - `parcels` with administrative metadata (district / taluk / village /
+    survey no.) and the polygon as GeoJSON `jsonb`.
   - `snapshots` keyed by parcel.
   - `alerts` referencing baseline + current snapshots.
   - Row-Level Security gating writes to `authority`.
@@ -284,9 +284,9 @@ field in the response surfaces which backend actually delivered.
 ### Default role flip
 
 `0008_default_role_authority.sql` — pilot policy is that every signup is
-assumed to be a TN official, so `profiles.role` defaults to `authority`
-and existing `viewer` rows are promoted. Override manually in SQL when a
-read-only role is wanted.
+granted authority, so `profiles.role` defaults to `authority` and existing
+`viewer` rows are promoted. Override manually in SQL when a read-only role
+is wanted.
 
 ### Settings page cleanup
 
@@ -348,7 +348,7 @@ src/
 │  ├─ notify.ts                       # Gmail SMTP / Resend cascade
 │  ├─ delete-actions.ts               # server actions for entity delete
 │  ├─ map-style.ts                    # MapLibre satellite / streets styles
-│  ├─ tn-data.ts                      # TN districts + restriction types
+│  ├─ regions.ts                      # district list + restriction types
 │  └─ sentinel-hub.ts                 # disabled (commented)
 └─ middleware.ts                      # session refresh + auth gate
 
@@ -378,7 +378,7 @@ vercel.json                            # daily cron
 - **No audit log.** No per-parcel history of *who* marked it as
   unauthorized and *when*.
 - **Authority verification is manual.** Production would integrate with
-  TN e-Sevai or similar identity proofing.
+  a government identity-proofing system.
 - **Sentinel-2 path commented out.** Re-enable in
   `src/lib/sentinel-hub.ts` for a guaranteed change-detection cadence.
 - **Email backend has no domain branding** when using Gmail SMTP —

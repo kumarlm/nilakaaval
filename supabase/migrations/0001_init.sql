@@ -1,4 +1,4 @@
--- Schema for GIS unauthorized-construction monitor (Tamil Nadu).
+-- Schema for GIS unauthorized-construction monitor.
 -- Run this in Supabase SQL editor once after creating the project.
 
 -- 1. Profiles -----------------------------------------------------------

@@ -48,13 +48,16 @@ export default async function Home() {
       <section className="flex-1 grid place-items-center px-6 py-16">
         <div className="max-w-3xl text-center">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">
-            Watch over Tamil Nadu&apos;s restricted lands.
+            Watch over restricted lands.
           </h1>
           <p className="mt-5 text-lg text-[var(--muted-fg)]">
             Authorities mark restricted parcels — reserved forests, water bodies,
             poromboke, temple land. We pull high-resolution satellite imagery
             on a schedule, compare against the baseline, and flag suspected
             unauthorized construction for review.
+          </p>
+          <p className="mt-3 text-sm text-[var(--muted-fg)]">
+            Pilot / educational project. Not affiliated with any government.
           </p>
           <div className="mt-8 flex justify-center gap-3">
             <Link
@@ -79,7 +82,7 @@ export default async function Home() {
       </section>
 
       <footer className="border-t border-[var(--border)] py-6 text-center text-sm text-[var(--muted-fg)]">
-        Built for educational / pilot use. Not an official Government of Tamil Nadu service.
+        Built for educational / pilot use.
       </footer>
     </main>
   );

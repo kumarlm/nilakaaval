@@ -1,22 +1,21 @@
-# Nilakaaval *(நிலக்காவல்)* — Tamil Nadu Land Guard
+# Nilakaaval *(நிலக்காவல்)* — Land Guard
 
 > *Nilakaaval* is Tamil for "Land Guard" — நிலம் (land) + காவல் (guard / watch).
 
-A web tool that helps government authorities mark **restricted land parcels**
+A web tool that helps authorised users mark **restricted land parcels**
 (reserved forest, water bodies, poromboke, temple land, CRZ, etc.) and
 automatically watches them for **unauthorized construction** by comparing
 fresh satellite imagery against historical snapshots, raising alerts and
 emailing the right people when something changes.
 
-> Pilot / educational project for **Tamil Nadu**. Not an official Government
-> of Tamil Nadu service. Built to be hostable for free (Vercel + Supabase
-> free tier + MapTiler free tier).
+> Pilot / educational project. Not affiliated with any government. Built to
+> be hostable for free (Vercel + Supabase free tier + MapTiler free tier).
 
 ---
 
 ## What this project is
 
-Imagine a Tahsildar or VAO who wants to keep an eye on a few hundred
+Imagine a revenue official who wants to keep an eye on a few hundred
 restricted parcels across a taluk. Driving out to inspect each one weekly is
 impossible. **Nilakaaval** automates that:
 
@@ -47,7 +46,7 @@ system. Every flag is sent to a human for verification.
 | 2 | Default `authority` role for every signup (can mark/scan/delete); `viewer` available for read-only access if assigned manually | ✅ |
 | 3 | Map view with **Esri** satellite + OSM-streets toggle (MapLibre, free) | ✅ |
 | 4 | Custom polygon drawer (click vertices, double-click / Enter to finish) | ✅ |
-| 5 | Save parcels with TN admin metadata (district / taluk / village / survey) | ✅ |
+| 5 | Save parcels with administrative metadata (district / taluk / village / survey) | ✅ |
 | 6 | List + detail pages for parcels | ✅ |
 | 7 | **Manual scan** — fetch + stitch a sub-meter MapTiler satellite image of the parcel and store it as a snapshot | ✅ |
 | 8 | **Cron scan** — daily Vercel Cron sweeps parcels due for re-scan based on `scan_frequency_days` | ✅ |
@@ -72,13 +71,13 @@ system. Every flag is sent to a human for verification.
   positives from lighting / mosaic re-blending. Hugging Face Spaces is the
   intended host.
 - **Permit registry cross-check** — to actually call a change *unauthorized*
-  the system would need to compare against TN's revenue / planning permit
-  database. Today every alert is just "possible change for review".
+  the system would need to compare against the relevant revenue / planning
+  permit database. Today every alert is just "possible change for review".
 - **Telegram notifications**, **SMS** — placeholders only.
 - **PostGIS** — polygons are stored as GeoJSON in `jsonb`, not as PostgreSQL
   geography type. Spatial filtering (e.g. "all parcels within X km of point")
   is done in JS, which is fine for thousands of parcels but not millions.
-- **Self-service authority verification** (TN e-Sevai integration etc.) —
+- **Self-service authority verification** (gov-issued identity proofing) —
   role is granted manually via SQL.
 
 ---
@@ -383,7 +382,7 @@ src/
 │  ├─ notify.ts                         # Resend alert emails
 │  ├─ delete-actions.ts                 # server actions for entity delete
 │  ├─ map-style.ts                      # MapLibre satellite/streets styles
-│  ├─ tn-data.ts                        # TN districts + restriction types
+│  ├─ regions.ts                        # district list + restriction types
 │  └─ sentinel-hub.ts                   # disabled, kept for future
 └─ middleware.ts                        # session refresh + auth gate
 
@@ -411,12 +410,12 @@ vercel.json                             # daily cron schedule
 - **Naïve diff** — RGB absolute difference triggers on lighting changes,
   shadow movement, mosaic re-blending, JPEG artefacts. Expect false
   positives until an ML model is plugged in.
-- **No PostGIS** — all spatial work is JS-side. Fine for a TN pilot; would
-  need rework for state-scale data.
+- **No PostGIS** — all spatial work is JS-side. Fine for thousands of
+  parcels; would need rework for state- or country-scale data.
 - **No audit log** — there's no per-parcel history of who marked a parcel as
   `unauthorized` and when.
 - **Authority verification is manual** — granted by SQL. Production would
-  integrate with TN e-Sevai or similar identity proofing.
+  integrate with a government identity-proofing system.
 
 ---
 

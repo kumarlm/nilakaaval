@@ -115,7 +115,7 @@ export async function sendAlertEmail(
 <html><body style="font-family:system-ui,sans-serif;color:#0f172a;background:#f8fafc;padding:24px">
   <div style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden">
     <div style="background:#0d6e54;color:#fff;padding:16px 20px">
-      <div style="font-size:12px;opacity:.85">Nilakaaval — Tamil Nadu Land Guard</div>
+      <div style="font-size:12px;opacity:.85">Nilakaaval — Land Guard</div>
       <div style="font-size:18px;font-weight:600;margin-top:2px">Possible change detected</div>
     </div>
     <div style="padding:20px">

@@ -6,9 +6,9 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Nilakaaval — Tamil Nadu Land Guard",
+  title: "Nilakaaval — Land Guard",
   description:
-    "Periodic monitoring of restricted land parcels in Tamil Nadu using high-resolution satellite imagery and change detection.",
+    "Periodic monitoring of restricted land parcels using high-resolution satellite imagery and change detection.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

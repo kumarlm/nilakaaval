@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { RESTRICTION_TYPES } from "@/lib/tn-data";
+import { RESTRICTION_TYPES } from "@/lib/regions";
 import DeleteButton from "@/components/delete-button";
 import { deleteParcelAction } from "@/lib/delete-actions";
 

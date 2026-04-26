@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { RESTRICTION_TYPES } from "@/lib/tn-data";
+import { RESTRICTION_TYPES } from "@/lib/regions";
 import ParcelMiniMap from "./mini-map";
 import RescanButton from "./rescan-button";
 import UploadSnapshot from "./upload-snapshot";
