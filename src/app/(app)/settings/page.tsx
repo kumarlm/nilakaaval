@@ -28,41 +28,11 @@ export default async function SettingsPage() {
       <section className="mt-8">
         <h2 className="text-lg font-medium">Alert recipients</h2>
         <p className="mt-1 text-sm text-[var(--muted-fg)]">
-          Authority users always get alerts to their account email. Add extra
-          addresses below — district revenue inspectors, village admin
-          officers, or your own secondary inbox.
+          You always get alerts to your account email. Add extra addresses
+          below — district revenue inspectors, village admin officers, or your
+          own secondary inbox.
         </p>
         <EmailsForm initialEmails={initialEmails} />
-      </section>
-
-      <section className="mt-8">
-        <h2 className="text-lg font-medium">Email delivery</h2>
-        <p className="mt-1 text-sm text-[var(--muted-fg)]">
-          Emails are sent via{" "}
-          <a
-            className="underline"
-            href="https://resend.com"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Resend
-          </a>
-          . Set <code className="rounded bg-[var(--muted)] px-1">RESEND_API_KEY</code>{" "}
-          (and optionally{" "}
-          <code className="rounded bg-[var(--muted)] px-1">ALERT_FROM_EMAIL</code>) in
-          your environment. Without a key, alert emails are skipped and logged
-          to the server console — useful for local testing.
-        </p>
-      </section>
-
-      <section className="mt-8">
-        <h2 className="text-lg font-medium">Become an authority</h2>
-        <p className="mt-1 text-sm text-[var(--muted-fg)]">
-          For now, role assignment is manual: a project admin will set
-          <code className="mx-1 rounded bg-[var(--muted)] px-1">role = &apos;authority&apos;</code>
-          on your profile row in Supabase. Self-service authority verification
-          (e.g. via TN e-Sevai) is out of scope for the v1 prototype.
-        </p>
       </section>
     </main>
   );

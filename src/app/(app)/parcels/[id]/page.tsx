@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { RESTRICTION_TYPES } from "@/lib/tn-data";
 import ParcelMiniMap from "./mini-map";
 import RescanButton from "./rescan-button";
-import ContextHero from "./context-hero";
 import UploadSnapshot from "./upload-snapshot";
 import DeleteButton from "@/components/delete-button";
 import {
@@ -85,10 +84,6 @@ export default async function ParcelDetailPage({
             />
           )}
         </div>
-      </div>
-
-      <div className="mt-6">
-        <ContextHero parcelId={parcel.id} imageUrl={parcel.context_image_url} />
       </div>
 
       <div className="mt-6 grid gap-6 md:grid-cols-2">

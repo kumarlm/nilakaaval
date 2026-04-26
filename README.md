@@ -44,22 +44,21 @@ system. Every flag is sent to a human for verification.
 | # | Feature | Status |
 |---|---|---|
 | 1 | Email/password and Google sign-in (Supabase Auth) | ✅ |
-| 2 | Role split: `authority` (can mark/scan/delete), `viewer` (read-only) | ✅ |
+| 2 | Default `authority` role for every signup (can mark/scan/delete); `viewer` available for read-only access if assigned manually | ✅ |
 | 3 | Map view with **Esri** satellite + OSM-streets toggle (MapLibre, free) | ✅ |
 | 4 | Custom polygon drawer (click vertices, double-click / Enter to finish) | ✅ |
 | 5 | Save parcels with TN admin metadata (district / taluk / village / survey) | ✅ |
 | 6 | List + detail pages for parcels | ✅ |
 | 7 | **Manual scan** — fetch + stitch a sub-meter MapTiler satellite image of the parcel and store it as a snapshot | ✅ |
 | 8 | **Cron scan** — daily Vercel Cron sweeps parcels due for re-scan based on `scan_frequency_days` | ✅ |
-| 9 | **Context image** — high-res snapshot with the parcel outline baked in, displayed on the parcel detail page | ✅ |
-| 10 | **Pixel-difference change detection** — RGB diff between consecutive snapshots, polygon-masked | ✅ |
-| 11 | **Diff heatmap** — red overlay over the after-image showing where pixels changed | ✅ |
-| 12 | **Alert thresholds** — score < 5% no alert, 5–10% low, 10–20% medium, ≥ 20% high | ✅ |
-| 13 | **Email notifications** via Resend (alerts go to all authority emails + per-user extra recipients) | ✅ |
-| 14 | **Manual snapshot upload** — UI to drop in any image as a "snapshot" so change detection can be tested without waiting for real construction | ✅ |
-| 15 | **Delete** — parcels (cascade), snapshots, and alerts; storage objects cleaned up server-side | ✅ |
-| 16 | Settings page — manage extra alert recipient emails | ✅ |
-| 17 | Vercel-ready build, runs on free tier | ✅ |
+| 9 | **Pixel-difference change detection** — RGB diff between consecutive snapshots, polygon-masked | ✅ |
+| 10 | **Diff heatmap** — red overlay over the after-image showing where pixels changed | ✅ |
+| 11 | **Alert thresholds** — score < 5% no alert, 5–10% low, 10–20% medium, ≥ 20% high | ✅ |
+| 12 | **Email notifications** via Resend (alerts go to all authority emails + per-user extra recipients) | ✅ |
+| 13 | **Manual snapshot upload** — UI to drop in any image as a "snapshot" so change detection can be tested without waiting for real construction | ✅ |
+| 14 | **Delete** — parcels (cascade), snapshots, and alerts; storage objects cleaned up server-side | ✅ |
+| 15 | Settings page — manage extra alert recipient emails | ✅ |
+| 16 | Vercel-ready build, runs on free tier | ✅ |
 
 ### What's intentionally NOT done (yet)
 
@@ -143,7 +142,6 @@ parcels
 ├─ district, taluk, village, survey_no
 ├─ geom: jsonb  (GeoJSON Polygon, WGS84)
 ├─ area_hectares, scan_frequency_days
-├─ context_image_url
 └─ last_scanned_at
 
 snapshots
@@ -246,9 +244,10 @@ provider in the loop that requires an API key.
    - [`supabase/migrations/0002_storage.sql`](supabase/migrations/0002_storage.sql)
    - [`supabase/migrations/0003_backfill_profiles.sql`](supabase/migrations/0003_backfill_profiles.sql) (idempotent, safe to skip on a fresh DB)
    - [`supabase/migrations/0004_profile_metadata.sql`](supabase/migrations/0004_profile_metadata.sql)
-   - [`supabase/migrations/0005_context_image.sql`](supabase/migrations/0005_context_image.sql)
+   - [`supabase/migrations/0005_context_image.sql`](supabase/migrations/0005_context_image.sql) (legacy column; keep)
    - [`supabase/migrations/0006_notification_emails.sql`](supabase/migrations/0006_notification_emails.sql)
    - [`supabase/migrations/0007_delete_policies.sql`](supabase/migrations/0007_delete_policies.sql)
+   - [`supabase/migrations/0008_default_role_authority.sql`](supabase/migrations/0008_default_role_authority.sql)
 3. From *Project Settings → API*, copy:
    - Project URL → `NEXT_PUBLIC_SUPABASE_URL`
    - **anon / publishable** key → `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or `…_PUBLISHABLE_KEY`)
@@ -289,16 +288,15 @@ npm install
 npm run dev
 ```
 
-Open <http://localhost:3000>, sign up, run this in Supabase SQL Editor to
-promote yourself:
+Open <http://localhost:3000> and sign up. Every new account is granted the
+`authority` role by default — you can mark parcels, run scans, and review
+alerts immediately. To downgrade a user to read-only viewer, run in the
+Supabase SQL Editor:
 
 ```sql
 update public.profiles
-   set role = 'authority',
-       full_name = 'Your Name',
-       designation = 'Tahsildar',
-       district = 'Coimbatore'
- where email = 'you@example.com';
+   set role = 'viewer'
+ where email = 'someone@example.com';
 ```
 
 ---
@@ -339,7 +337,7 @@ Add these env vars in the Vercel dashboard:
 | `NEXT_PUBLIC_SUPABASE_URL` | always |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` (or `_PUBLISHABLE_KEY`) | always |
 | `SUPABASE_SERVICE_ROLE_KEY` | scan worker, change detection, delete |
-| `MAPTILER_API_KEY` | scan worker + context image |
+| `MAPTILER_API_KEY` | scan worker |
 | `RESEND_API_KEY` | email alerts (optional — without it alerts are DB-only) |
 | `ALERT_FROM_EMAIL` | optional — defaults to Resend's sandbox sender |
 | `NEXT_PUBLIC_APP_URL` | used in alert email links |
@@ -364,7 +362,6 @@ src/
 │  │  ├─ scan/[id]/route.ts             # manual scan
 │  │  ├─ cron/scan/route.ts             # Vercel Cron entrypoint
 │  │  └─ parcels/[id]/
-│  │     ├─ context/route.ts            # bake high-res context image
 │  │     └─ snapshots/route.ts          # manual snapshot upload
 │  └─ (app)/                            # auth-gated app shell
 │     ├─ layout.tsx                     # sidebar nav + profile auto-heal
@@ -397,7 +394,8 @@ supabase/migrations/
 ├─ 0004_profile_metadata.sql
 ├─ 0005_context_image.sql
 ├─ 0006_notification_emails.sql
-└─ 0007_delete_policies.sql
+├─ 0007_delete_policies.sql
+└─ 0008_default_role_authority.sql
 
 vercel.json                             # daily cron schedule
 ```

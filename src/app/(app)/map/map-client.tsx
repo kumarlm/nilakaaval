@@ -365,24 +365,15 @@ export default function MapClient({
       setError((e as Error).message);
       return;
     }
-    const { data: inserted, error } = await supabase
-      .from("parcels")
-      .insert({
-        ...form,
-        geom: polygon,
-        area_hectares: approxHectares(polygon),
-      })
-      .select("id")
-      .single();
+    const { error } = await supabase.from("parcels").insert({
+      ...form,
+      geom: polygon,
+      area_hectares: approxHectares(polygon),
+    });
     setSaving(false);
     if (error) {
       setError(error.message);
       return;
-    }
-    // Fire-and-forget context image bake. Failure is non-fatal — the parcel
-    // is saved either way.
-    if (inserted?.id) {
-      void fetch(`/api/parcels/${inserted.id}/context`, { method: "POST" });
     }
     cancelDrawing();
     setForm({
