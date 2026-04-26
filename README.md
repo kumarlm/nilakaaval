@@ -1,6 +1,5 @@
-# Nilakaaval *(நிலக்காவல்)* — Land Guard
+# Nilakaaval — Land Guard
 
-> *Nilakaaval* is Tamil for "Land Guard" — நிலம் (land) + காவல் (guard / watch).
 
 A web tool that helps authorised users mark **restricted land parcels**
 (reserved forest, water bodies, poromboke, temple land, CRZ, etc.) and
