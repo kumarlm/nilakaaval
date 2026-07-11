@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import maplibregl from "maplibre-gl";
 import { createClient } from "@/lib/supabase/client";
-import { DEFAULT_CENTER, DISTRICTS, RESTRICTION_TYPES } from "@/lib/regions";
+import { DEFAULT_CENTER, DISTRICT_CENTERS, DISTRICTS, RESTRICTION_TYPES } from "@/lib/regions";
 import { satelliteStyle, streetsStyle } from "@/lib/map-style";
 import { useRouter } from "next/navigation";
 
@@ -13,6 +13,7 @@ type Parcel = {
   district: string;
   taluk: string;
   village: string;
+  survey_no: string | null;
   restriction_type: string;
   geom: GeoJSON.Polygon;
 };
@@ -306,6 +307,39 @@ export default function MapClient({
     if (!map.isStyleLoaded()) return;
     map.setStyle(basemap === "satellite" ? satelliteStyle() : streetsStyle());
   }, [basemap]);
+
+  // When the district field changes, fly to that district's centre.
+  // Skip the very first render (initial form value shouldn't trigger a fly).
+  const districtChangedRef = useRef(false);
+  useEffect(() => {
+    if (!districtChangedRef.current) {
+      districtChangedRef.current = true;
+      return;
+    }
+    const map = mapRef.current;
+    if (!map) return;
+    const center = DISTRICT_CENTERS[form.district];
+    if (!center) return;
+    map.flyTo({ center, zoom: 11, duration: 1200 });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.district]);
+
+  // When district + survey_no together match an existing parcel, zoom to it.
+  useEffect(() => {
+    if (!form.survey_no) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const match = initialParcels.find(
+      (p) =>
+        p.district === form.district &&
+        p.survey_no != null &&
+        p.survey_no.trim().toLowerCase() === form.survey_no.trim().toLowerCase(),
+    );
+    if (!match) return;
+    const centroid = polygonCentroid(match.geom);
+    map.flyTo({ center: centroid, zoom: 15, duration: 1200 });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.survey_no, form.district]);
 
   const startDrawing = useCallback(() => {
     drawStateRef.current = "drawing";
@@ -657,6 +691,18 @@ function escapeHtml(s: string) {
 
 function labelFor(value: string) {
   return RESTRICTION_TYPES.find((r) => r.value === value)?.label ?? value;
+}
+
+function polygonCentroid(poly: GeoJSON.Polygon): [number, number] {
+  const ring = poly.coordinates[0];
+  if (!ring || ring.length === 0) return DEFAULT_CENTER;
+  let sumLng = 0, sumLat = 0;
+  const n = ring.length - 1; // last coord repeats first for a closed ring
+  for (let i = 0; i < n; i++) {
+    sumLng += ring[i][0];
+    sumLat += ring[i][1];
+  }
+  return [sumLng / n, sumLat / n];
 }
 
 // Spherical-excess area approximation good enough for sub-100 ha parcels.
