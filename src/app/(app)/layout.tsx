@@ -67,7 +67,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col min-w-0">{children}</div>
+      <div className="flex-1 flex flex-col min-w-0">
+        <form action="/search" className="border-b border-[var(--border)] px-6 py-3">
+          <input
+            type="search"
+            name="q"
+            placeholder="Search parcels by name, village, district, survey no..."
+            className="w-full max-w-md rounded border border-[var(--border)] bg-[var(--background)] px-3 py-1.5 text-sm"
+          />
+        </form>
+        {children}
+      </div>
     </div>
   );
 }
