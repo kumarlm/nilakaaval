@@ -2,11 +2,17 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { RESTRICTION_TYPES } from "@/lib/regions";
 import { searchKey } from "@/lib/search-key";
+import { PAGE_SIZE, getPaginationParams, getPaginationInfo, buildPageUrl } from "@/lib/pagination";
 import { ListSearch } from "@/components/list-search";
+import { Pagination } from "@/components/pagination";
 import DeleteButton from "@/components/delete-button";
 import { deleteParcelAction } from "@/lib/delete-actions";
 
-export default async function ParcelsPage() {
+export default async function ParcelsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const supabase = await createClient();
   if (!supabase) return null;
   const { data: { user } } = await supabase.auth.getUser();
@@ -19,12 +25,20 @@ export default async function ParcelsPage() {
     : { data: null };
   const isAuthority = profile?.role === "authority";
 
+  const params = await searchParams;
+  const { page, offset } = getPaginationParams(params);
+
+  const { count } = await supabase
+    .from("parcels")
+    .select("id", { count: "exact", head: true });
+
   const { data: parcels } = await supabase
     .from("parcels")
     .select(
       "id, name, district, taluk, village, survey_no, restriction_type, area_hectares, last_scanned_at, status, notes",
     )
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .range(offset, offset + PAGE_SIZE - 1);
 
   return (
     <main className="flex-1 p-6">
@@ -110,6 +124,12 @@ export default async function ParcelsPage() {
             </tr>
           </tbody>
         </table>
+
+        {(() => {
+          const { totalPages } = getPaginationInfo(count, page);
+          const buildUrl = (p: number) => buildPageUrl("/parcels", p, new URLSearchParams());
+          return <Pagination page={page} totalPages={totalPages} buildUrl={buildUrl} />;
+        })()}
       </div>
     </main>
   );

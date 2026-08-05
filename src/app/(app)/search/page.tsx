@@ -2,7 +2,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { RESTRICTION_TYPES } from "@/lib/regions";
 import { searchKey } from "@/lib/search-key";
+import { PAGE_SIZE, getPaginationParams, getPaginationInfo, buildPageUrl } from "@/lib/pagination";
 import { ListSearch } from "@/components/list-search";
+import { Pagination } from "@/components/pagination";
 
 // Escape PostgREST .or() filter syntax special characters so a raw search
 // term can't break out of the ilike pattern or the comma-separated filter list.
@@ -13,9 +15,10 @@ function sanitize(q: string) {
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; page?: string }>;
 }) {
-  const { q } = await searchParams;
+  const sp = await searchParams;
+  const { q } = sp;
   const query = q?.trim() ?? "";
 
   const supabase = await createClient();
@@ -35,17 +38,32 @@ export default async function SearchPage({
     notes: string | null;
   }> = [];
 
+  let count: number | null = null;
+  let page = 1;
+  let offset = 0;
+
   if (query) {
+    const { page: p, offset: o } = getPaginationParams(sp);
+    page = p;
+    offset = o;
+
     const term = sanitize(query);
+    const filter = `name.ilike.%${term}%,district.ilike.%${term}%,taluk.ilike.%${term}%,village.ilike.%${term}%,survey_no.ilike.%${term}%,notes.ilike.%${term}%,restriction_type.ilike.%${term}%,status.ilike.%${term}%`;
+
+    const { count: c } = await supabase
+      .from("parcels")
+      .select("id", { count: "exact", head: true })
+      .or(filter);
+    count = c;
+
     const { data } = await supabase
       .from("parcels")
       .select(
         "id, name, district, taluk, village, survey_no, restriction_type, area_hectares, last_scanned_at, status, notes",
       )
-      .or(
-        `name.ilike.%${term}%,district.ilike.%${term}%,taluk.ilike.%${term}%,village.ilike.%${term}%,survey_no.ilike.%${term}%,notes.ilike.%${term}%,restriction_type.ilike.%${term}%,status.ilike.%${term}%`,
-      )
-      .order("created_at", { ascending: false });
+      .or(filter)
+      .order("created_at", { ascending: false })
+      .range(offset, offset + PAGE_SIZE - 1);
     parcels = data ?? [];
   }
 
@@ -116,6 +134,15 @@ export default async function SearchPage({
               </tr>
             </tbody>
           </table>
+
+          {(() => {
+            const { totalPages } = getPaginationInfo(count, page);
+            const buildUrl = (p: number) => {
+              const params = new URLSearchParams({ q: query });
+              return buildPageUrl("/search", p, params);
+            };
+            return <Pagination page={page} totalPages={totalPages} buildUrl={buildUrl} />;
+          })()}
         </div>
         </>
       )}
