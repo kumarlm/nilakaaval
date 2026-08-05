@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { RESTRICTION_TYPES } from "@/lib/regions";
+import { searchKey } from "@/lib/search-key";
+import { ListSearch } from "@/components/list-search";
 import DeleteButton from "@/components/delete-button";
 import { deleteParcelAction } from "@/lib/delete-actions";
 
@@ -20,7 +22,7 @@ export default async function ParcelsPage() {
   const { data: parcels } = await supabase
     .from("parcels")
     .select(
-      "id, name, district, taluk, village, survey_no, restriction_type, area_hectares, last_scanned_at, status",
+      "id, name, district, taluk, village, survey_no, restriction_type, area_hectares, last_scanned_at, status, notes",
     )
     .order("created_at", { ascending: false });
 
@@ -36,8 +38,10 @@ export default async function ParcelsPage() {
         </Link>
       </div>
 
+      <ListSearch targetId="parcels-table" noun="parcels" />
+
       <div className="mt-6 overflow-hidden rounded-lg border border-[var(--border)]">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" id="parcels-table">
           <thead className="bg-[var(--muted)] text-left">
             <tr>
               <th className="px-4 py-2 font-medium">Name</th>
@@ -56,50 +60,54 @@ export default async function ParcelsPage() {
                   No parcels recorded yet.
                 </td>
               </tr>
-            ) : (
-              parcels!.map((p) => {
-                const type =
-                  RESTRICTION_TYPES.find((r) => r.value === p.restriction_type)
-                    ?.label ?? p.restriction_type;
-                return (
-                  <tr key={p.id} className="border-t border-[var(--border)]">
-                    <td className="px-4 py-2 font-medium">{p.name}</td>
-                    <td className="px-4 py-2">{type}</td>
-                    <td className="px-4 py-2">{`${p.village}, ${p.taluk}, ${p.district}`}</td>
-                    <td className="px-4 py-2">{p.survey_no ?? "—"}</td>
-                    <td className="px-4 py-2">
-                      {p.area_hectares ? Number(p.area_hectares).toFixed(2) : "—"}
-                    </td>
-                    <td className="px-4 py-2">
-                      {p.last_scanned_at
-                        ? new Date(p.last_scanned_at).toLocaleDateString()
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      <span className="inline-flex items-center gap-3">
-                        <Link
-                          href={`/parcels/${p.id}`}
-                          className="text-[var(--primary)] hover:underline"
-                        >
-                          Open
-                        </Link>
-                        {isAuthority && (
-                          <DeleteButton
-                            label="Delete"
-                            variant="link"
-                            confirmText={`Delete parcel "${p.name}"? All its snapshots and alerts will be removed too. This cannot be undone.`}
-                            action={async () => {
-                              "use server";
-                              return deleteParcelAction(p.id);
-                            }}
-                          />
-                        )}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
+            ) : null}
+            {(parcels ?? []).map((p) => {
+              const type =
+                RESTRICTION_TYPES.find((r) => r.value === p.restriction_type)
+                  ?.label ?? p.restriction_type;
+              return (
+                <tr key={p.id} className="border-t border-[var(--border)]" data-search={searchKey(p.name, type, p.village, p.taluk, p.district, p.survey_no, p.status, p.notes)}>
+                  <td className="px-4 py-2 font-medium">{p.name}</td>
+                  <td className="px-4 py-2">{type}</td>
+                  <td className="px-4 py-2">{`${p.village}, ${p.taluk}, ${p.district}`}</td>
+                  <td className="px-4 py-2">{p.survey_no ?? "—"}</td>
+                  <td className="px-4 py-2">
+                    {p.area_hectares ? Number(p.area_hectares).toFixed(2) : "—"}
+                  </td>
+                  <td className="px-4 py-2">
+                    {p.last_scanned_at
+                      ? new Date(p.last_scanned_at).toLocaleDateString()
+                      : "—"}
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    <span className="inline-flex items-center gap-3">
+                      <Link
+                        href={`/parcels/${p.id}`}
+                        className="text-[var(--primary)] hover:underline"
+                      >
+                        Open
+                      </Link>
+                      {isAuthority && (
+                        <DeleteButton
+                          label="Delete"
+                          variant="link"
+                          confirmText={`Delete parcel "${p.name}"? All its snapshots and alerts will be removed too. This cannot be undone.`}
+                          action={async () => {
+                            "use server";
+                            return deleteParcelAction(p.id);
+                          }}
+                        />
+                      )}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+            <tr data-no-match style={{ display: "none" }}>
+              <td colSpan={7} className="px-4 py-8 text-center text-[var(--muted-fg)]">
+                No parcels match your filter.
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>

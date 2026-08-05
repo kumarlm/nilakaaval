@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { RESTRICTION_TYPES } from "@/lib/regions";
+import { searchKey } from "@/lib/search-key";
+import { ListSearch } from "@/components/list-search";
 import ParcelMiniMap from "./mini-map";
 import RescanButton from "./rescan-button";
 import UploadSnapshot from "./upload-snapshot";
@@ -116,9 +118,11 @@ export default async function ParcelDetailPage({
             to capture the first snapshot.
           </p>
         ) : (
-          <ul className="mt-3 grid gap-3 sm:grid-cols-3">
-            {snapshots!.map((s) => (
-              <li key={s.id} className="rounded-lg border border-[var(--border)] overflow-hidden">
+          <>
+            <ListSearch targetId="snapshots-list" noun="snapshots" />
+            <ul className="mt-3 grid gap-3 sm:grid-cols-3" id="snapshots-list">
+              {snapshots!.map((s) => (
+              <li key={s.id} className="rounded-lg border border-[var(--border)] overflow-hidden" data-search={searchKey(s.source)}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={s.image_url} alt="" className="w-full h-32 object-cover" />
                 <div className="px-3 py-2 text-xs">
@@ -139,9 +143,13 @@ export default async function ParcelDetailPage({
                   <div className="text-[var(--muted-fg)]">{s.source}{s.cloud_cover != null ? ` · ${Math.round(Number(s.cloud_cover))}% cloud` : ""}</div>
                 </div>
               </li>
-            ))}
-          </ul>
-        )}
+              ))}
+              <li data-no-match style={{ display: "none" }} className="text-center text-sm text-[var(--muted-fg)] py-8">
+                No snapshots match your filter.
+              </li>
+            </ul>
+            </>
+          )}
       </section>
 
       <section className="mt-8">
@@ -149,11 +157,14 @@ export default async function ParcelDetailPage({
         {(alerts ?? []).length === 0 ? (
           <p className="mt-2 text-sm text-[var(--muted-fg)]">No alerts yet.</p>
         ) : (
-          <ul className="mt-3 space-y-3">
-            {alerts!.map((a) => (
+          <>
+            <ListSearch targetId="alerts-list" noun="alerts" />
+            <ul className="mt-3 space-y-3" id="alerts-list">
+              {alerts!.map((a) => (
               <li
                 key={a.id}
                 className="rounded-lg border border-[var(--border)] overflow-hidden md:flex"
+                data-search={searchKey(a.severity, a.status)}
               >
                 {a.diff_image_url && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -206,9 +217,13 @@ export default async function ParcelDetailPage({
                   </div>
                 </div>
               </li>
-            ))}
-          </ul>
-        )}
+              ))}
+              <li data-no-match style={{ display: "none" }} className="text-center text-sm text-[var(--muted-fg)] py-8">
+                No alerts match your filter.
+              </li>
+            </ul>
+            </>
+          )}
       </section>
     </main>
   );
