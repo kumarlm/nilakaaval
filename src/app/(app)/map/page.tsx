@@ -13,7 +13,7 @@ export default async function MapPage() {
 
   const { data: parcels } = await supabase
     .from("parcels")
-    .select("id, name, district, taluk, village, restriction_type, geom")
+    .select("id, name, district, taluk, village, survey_no, restriction_type, geom")
     .eq("status", "active");
 
   return (
