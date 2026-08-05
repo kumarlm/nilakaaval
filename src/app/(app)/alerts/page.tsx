@@ -1,11 +1,17 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { searchKey } from "@/lib/search-key";
+import { PAGE_SIZE, getPaginationParams, getPaginationInfo, buildPageUrl } from "@/lib/pagination";
 import { ListSearch } from "@/components/list-search";
+import { Pagination } from "@/components/pagination";
 import DeleteButton from "@/components/delete-button";
 import { deleteAlertAction } from "@/lib/delete-actions";
 
-export default async function AlertsPage() {
+export default async function AlertsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const supabase = await createClient();
   if (!supabase) return null;
   const { data: { user } } = await supabase.auth.getUser();
@@ -18,10 +24,18 @@ export default async function AlertsPage() {
     : { data: null };
   const isAuthority = profile?.role === "authority";
 
+  const params = await searchParams;
+  const { page, offset } = getPaginationParams(params);
+
+  const { count } = await supabase
+    .from("alerts")
+    .select("id", { count: "exact", head: true });
+
   const { data: alerts } = await supabase
     .from("alerts")
     .select("id, parcel_id, detected_at, severity, status, change_score, notes, parcels(name, district, village)")
-    .order("detected_at", { ascending: false });
+    .order("detected_at", { ascending: false })
+    .range(offset, offset + PAGE_SIZE - 1);
 
   return (
     <main className="flex-1 p-6">
@@ -96,6 +110,12 @@ export default async function AlertsPage() {
             </tr>
           </tbody>
         </table>
+
+        {(() => {
+          const { totalPages } = getPaginationInfo(count, page);
+          const buildUrl = (p: number) => buildPageUrl("/alerts", p, new URLSearchParams());
+          return <Pagination page={page} totalPages={totalPages} buildUrl={buildUrl} />;
+        })()}
       </div>
     </main>
   );

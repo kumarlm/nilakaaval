@@ -3,7 +3,9 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { RESTRICTION_TYPES } from "@/lib/regions";
 import { searchKey } from "@/lib/search-key";
+import { PAGE_SIZE, getPaginationParams, getPaginationInfo, buildPageUrl } from "@/lib/pagination";
 import { ListSearch } from "@/components/list-search";
+import { Pagination } from "@/components/pagination";
 import ParcelMiniMap from "./mini-map";
 import RescanButton from "./rescan-button";
 import UploadSnapshot from "./upload-snapshot";
@@ -16,10 +18,14 @@ import {
 
 export default async function ParcelDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ snapshot_page?: string; alert_page?: string }>;
 }) {
   const { id } = await params;
+  const sp = await searchParams;
+
   const supabase = await createClient();
   if (!supabase) return null;
   const { data: parcel } = await supabase
@@ -40,19 +46,32 @@ export default async function ParcelDetailPage({
     : { data: null };
   const canScan = profile?.role === "authority";
 
+  const { page: snapshotPage, offset: snapshotOffset } = getPaginationParams(sp, "snapshot_page");
+  const { page: alertPage, offset: alertOffset } = getPaginationParams(sp, "alert_page");
+
+  const { count: snapshotCount } = await supabase
+    .from("snapshots")
+    .select("id", { count: "exact", head: true })
+    .eq("parcel_id", id);
+
+  const { count: alertCount } = await supabase
+    .from("alerts")
+    .select("id", { count: "exact", head: true })
+    .eq("parcel_id", id);
+
   const { data: snapshots } = await supabase
     .from("snapshots")
     .select("id, captured_at, image_url, source, cloud_cover")
     .eq("parcel_id", id)
     .order("captured_at", { ascending: false })
-    .limit(10);
+    .range(snapshotOffset, snapshotOffset + PAGE_SIZE - 1);
 
   const { data: alerts } = await supabase
     .from("alerts")
     .select("id, detected_at, severity, status, change_score, diff_image_url")
     .eq("parcel_id", id)
     .order("detected_at", { ascending: false })
-    .limit(10);
+    .range(alertOffset, alertOffset + PAGE_SIZE - 1);
 
   const type =
     RESTRICTION_TYPES.find((r) => r.value === parcel.restriction_type)?.label ??
@@ -148,6 +167,14 @@ export default async function ParcelDetailPage({
                 No snapshots match your filter.
               </li>
             </ul>
+            {(() => {
+              const { totalPages } = getPaginationInfo(snapshotCount, snapshotPage);
+              const buildUrl = (p: number) => {
+                const params = new URLSearchParams(sp);
+                return buildPageUrl(`/parcels/${id}`, p, params, "snapshot_page");
+              };
+              return <Pagination page={snapshotPage} totalPages={totalPages} buildUrl={buildUrl} />;
+            })()}
             </>
           )}
       </section>
@@ -222,6 +249,14 @@ export default async function ParcelDetailPage({
                 No alerts match your filter.
               </li>
             </ul>
+            {(() => {
+              const { totalPages } = getPaginationInfo(alertCount, alertPage);
+              const buildUrl = (p: number) => {
+                const params = new URLSearchParams(sp);
+                return buildPageUrl(`/parcels/${id}`, p, params, "alert_page");
+              };
+              return <Pagination page={alertPage} totalPages={totalPages} buildUrl={buildUrl} />;
+            })()}
             </>
           )}
       </section>
