@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { searchKey } from "@/lib/search-key";
+import { ListSearch } from "@/components/list-search";
 import DeleteButton from "@/components/delete-button";
 import { deleteAlertAction } from "@/lib/delete-actions";
 
@@ -18,7 +20,7 @@ export default async function AlertsPage() {
 
   const { data: alerts } = await supabase
     .from("alerts")
-    .select("id, parcel_id, detected_at, severity, status, change_score, parcels(name, district, village)")
+    .select("id, parcel_id, detected_at, severity, status, change_score, notes, parcels(name, district, village)")
     .order("detected_at", { ascending: false });
 
   return (
@@ -29,8 +31,10 @@ export default async function AlertsPage() {
         alert and mark its outcome.
       </p>
 
+      <ListSearch targetId="alerts-table" noun="alerts" />
+
       <div className="mt-6 overflow-hidden rounded-lg border border-[var(--border)]">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" id="alerts-table">
           <thead className="bg-[var(--muted)] text-left">
             <tr>
               <th className="px-4 py-2 font-medium">Detected</th>
@@ -48,15 +52,15 @@ export default async function AlertsPage() {
                   No alerts yet — upload two snapshots on a parcel to test, or wait for the daily scan.
                 </td>
               </tr>
-            ) : (
-              alerts!.map((a) => {
+            ) : null}
+            {(alerts ?? []).map((a) => {
                 const parcel = a.parcels as
                   | { name: string; district: string; village: string }
                   | { name: string; district: string; village: string }[]
                   | null;
                 const p = Array.isArray(parcel) ? parcel[0] : parcel;
                 return (
-                  <tr key={a.id} className="border-t border-[var(--border)]">
+                  <tr key={a.id} className="border-t border-[var(--border)]" data-search={searchKey(a.severity, a.status, a.notes, p?.name, p?.village, p?.district)}>
                     <td className="px-4 py-2">{new Date(a.detected_at).toLocaleString()}</td>
                     <td className="px-4 py-2">
                       {p ? `${p.name} · ${p.village}, ${p.district}` : "—"}
@@ -84,8 +88,12 @@ export default async function AlertsPage() {
                     </td>
                   </tr>
                 );
-              })
-            )}
+              })}
+            <tr data-no-match style={{ display: "none" }}>
+              <td colSpan={6} className="px-4 py-8 text-center text-[var(--muted-fg)]">
+                No alerts match your filter.
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>

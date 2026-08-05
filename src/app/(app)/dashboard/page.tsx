@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { searchKey } from "@/lib/search-key";
+import { ListSearch } from "@/components/list-search";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -39,8 +41,9 @@ export default async function DashboardPage() {
 
       <section className="mt-8">
         <h2 className="text-lg font-medium">Recently added parcels</h2>
+        <ListSearch targetId="recent-parcels-table" noun="parcels" />
         <div className="mt-3 overflow-hidden rounded-lg border border-[var(--border)]">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm" id="recent-parcels-table">
             <thead className="bg-[var(--muted)] text-left">
               <tr>
                 <th className="px-4 py-2 font-medium">Name</th>
@@ -58,26 +61,30 @@ export default async function DashboardPage() {
                     No parcels yet. <Link href="/map" className="underline">Mark one on the map →</Link>
                   </td>
                 </tr>
-              ) : (
-                recent!.map((p) => (
-                  <tr key={p.id} className="border-t border-[var(--border)]">
-                    <td className="px-4 py-2 font-medium">{p.name}</td>
-                    <td className="px-4 py-2">{p.district}</td>
-                    <td className="px-4 py-2">{p.taluk}</td>
-                    <td className="px-4 py-2">{p.village}</td>
-                    <td className="px-4 py-2">
-                      {p.last_scanned_at
-                        ? new Date(p.last_scanned_at).toLocaleDateString()
-                        : "—"}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      <Link href={`/parcels/${p.id}`} className="text-[var(--primary)] hover:underline">
-                        Open
-                      </Link>
-                    </td>
-                  </tr>
-                ))
-              )}
+              ) : null}
+            {recent!.map((p) => (
+              <tr key={p.id} className="border-t border-[var(--border)]" data-search={searchKey(p.name, p.district, p.taluk, p.village, p.status)}>
+                <td className="px-4 py-2 font-medium">{p.name}</td>
+                <td className="px-4 py-2">{p.district}</td>
+                <td className="px-4 py-2">{p.taluk}</td>
+                <td className="px-4 py-2">{p.village}</td>
+                <td className="px-4 py-2">
+                  {p.last_scanned_at
+                    ? new Date(p.last_scanned_at).toLocaleDateString()
+                    : "—"}
+                </td>
+                <td className="px-4 py-2 text-right">
+                  <Link href={`/parcels/${p.id}`} className="text-[var(--primary)] hover:underline">
+                    Open
+                  </Link>
+                </td>
+              </tr>
+            ))}
+            <tr data-no-match style={{ display: "none" }}>
+              <td colSpan={6} className="px-4 py-8 text-center text-[var(--muted-fg)]">
+                No parcels match your filter.
+              </td>
+            </tr>
             </tbody>
           </table>
         </div>
