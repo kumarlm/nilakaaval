@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { RESTRICTION_TYPES } from "@/lib/regions";
 import { searchKey } from "@/lib/search-key";
-import { PAGE_SIZE, getPaginationParams, getPaginationInfo, buildPageUrl } from "@/lib/pagination";
+import { PAGE_SIZE, getPaginationParams, getPaginationInfo } from "@/lib/pagination";
 import { ListSearch } from "@/components/list-search";
 import { Pagination } from "@/components/pagination";
 
@@ -135,14 +135,12 @@ export default async function SearchPage({
             </tbody>
           </table>
 
-          {(() => {
-            const { totalPages } = getPaginationInfo(count, page);
-            const buildUrl = (p: number) => {
-              const params = new URLSearchParams({ q: query });
-              return buildPageUrl("/search", p, params);
-            };
-            return <Pagination page={page} totalPages={totalPages} buildUrl={buildUrl} />;
-          })()}
+          <Pagination
+            page={page}
+            totalPages={getPaginationInfo(count, page).totalPages}
+            baseUrl="/search"
+            searchParams={`q=${encodeURIComponent(query)}`}
+          />
         </div>
         </>
       )}

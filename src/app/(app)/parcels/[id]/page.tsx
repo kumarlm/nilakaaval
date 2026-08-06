@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { RESTRICTION_TYPES } from "@/lib/regions";
 import { searchKey } from "@/lib/search-key";
-import { PAGE_SIZE, getPaginationParams, getPaginationInfo, buildPageUrl } from "@/lib/pagination";
+import { PAGE_SIZE, getPaginationParams, getPaginationInfo } from "@/lib/pagination";
 import { ListSearch } from "@/components/list-search";
 import { Pagination } from "@/components/pagination";
 import ParcelMiniMap from "./mini-map";
@@ -167,14 +167,13 @@ export default async function ParcelDetailPage({
                 No snapshots match your filter.
               </li>
             </ul>
-            {(() => {
-              const { totalPages } = getPaginationInfo(snapshotCount, snapshotPage);
-              const buildUrl = (p: number) => {
-                const params = new URLSearchParams(sp);
-                return buildPageUrl(`/parcels/${id}`, p, params, "snapshot_page");
-              };
-              return <Pagination page={snapshotPage} totalPages={totalPages} buildUrl={buildUrl} />;
-            })()}
+            <Pagination
+              page={snapshotPage}
+              totalPages={getPaginationInfo(snapshotCount, snapshotPage).totalPages}
+              baseUrl={`/parcels/${id}`}
+              paramName="snapshot_page"
+              searchParams={sp.alert_page ? `alert_page=${sp.alert_page}` : ""}
+            />
             </>
           )}
       </section>
@@ -249,14 +248,13 @@ export default async function ParcelDetailPage({
                 No alerts match your filter.
               </li>
             </ul>
-            {(() => {
-              const { totalPages } = getPaginationInfo(alertCount, alertPage);
-              const buildUrl = (p: number) => {
-                const params = new URLSearchParams(sp);
-                return buildPageUrl(`/parcels/${id}`, p, params, "alert_page");
-              };
-              return <Pagination page={alertPage} totalPages={totalPages} buildUrl={buildUrl} />;
-            })()}
+            <Pagination
+              page={alertPage}
+              totalPages={getPaginationInfo(alertCount, alertPage).totalPages}
+              baseUrl={`/parcels/${id}`}
+              paramName="alert_page"
+              searchParams={sp.snapshot_page ? `snapshot_page=${sp.snapshot_page}` : ""}
+            />
             </>
           )}
       </section>

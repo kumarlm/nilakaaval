@@ -14,14 +14,3 @@ export function getPaginationInfo(count: number | null, page: number) {
   const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
   return { totalPages, hasPrev: page > 1, hasNext: page < totalPages };
 }
-
-export function buildPageUrl(
-  baseUrl: string,
-  newPage: number,
-  currentParams: URLSearchParams,
-  paramName = "page",
-) {
-  const params = new URLSearchParams(currentParams);
-  params.set(paramName, String(newPage));
-  return `${baseUrl}?${params.toString()}`;
-}

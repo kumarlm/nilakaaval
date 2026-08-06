@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { searchKey } from "@/lib/search-key";
-import { PAGE_SIZE, getPaginationParams, getPaginationInfo, buildPageUrl } from "@/lib/pagination";
+import { PAGE_SIZE, getPaginationParams, getPaginationInfo } from "@/lib/pagination";
 import { ListSearch } from "@/components/list-search";
 import { Pagination } from "@/components/pagination";
 import DeleteButton from "@/components/delete-button";
@@ -111,11 +111,11 @@ export default async function AlertsPage({
           </tbody>
         </table>
 
-        {(() => {
-          const { totalPages } = getPaginationInfo(count, page);
-          const buildUrl = (p: number) => buildPageUrl("/alerts", p, new URLSearchParams());
-          return <Pagination page={page} totalPages={totalPages} buildUrl={buildUrl} />;
-        })()}
+        <Pagination
+          page={page}
+          totalPages={getPaginationInfo(count, page).totalPages}
+          baseUrl="/alerts"
+        />
       </div>
     </main>
   );
