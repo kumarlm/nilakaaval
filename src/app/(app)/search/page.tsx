@@ -1,21 +1,23 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { RESTRICTION_TYPES } from "@/lib/regions";
-import { searchKey } from "@/lib/search-key";
-import { PAGE_SIZE, getPaginationParams, getPaginationInfo, buildPageUrl } from "@/lib/pagination";
-import { ListSearch } from "@/components/list-search";
+import { buildOrFilter } from "@/lib/list-filter";
+import {
+  PAGE_SIZE,
+  getPaginationParams,
+  getPaginationInfo,
+  getSortParams,
+  paramsExcept,
+} from "@/lib/pagination";
+import { SortableHeader } from "@/components/sortable-header";
 import { Pagination } from "@/components/pagination";
 
-// Escape PostgREST .or() filter syntax special characters so a raw search
-// term can't break out of the ilike pattern or the comma-separated filter list.
-function sanitize(q: string) {
-  return q.replace(/[%,()*]/g, "");
-}
+const SORTABLE_COLUMNS = ["name", "restriction_type", "survey_no", "area_hectares", "last_scanned_at"] as const;
 
 export default async function SearchPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; sort?: string; dir?: string }>;
 }) {
   const sp = await searchParams;
   const { q } = sp;
@@ -41,31 +43,44 @@ export default async function SearchPage({
   let count: number | null = null;
   let page = 1;
   let offset = 0;
+  const { column: sortColumn, dir: sortDir } = getSortParams(
+    sp,
+    SORTABLE_COLUMNS,
+    "created_at",
+    "desc",
+  );
 
   if (query) {
     const { page: p, offset: o } = getPaginationParams(sp);
     page = p;
     offset = o;
 
-    const term = sanitize(query);
-    const filter = `name.ilike.%${term}%,district.ilike.%${term}%,taluk.ilike.%${term}%,village.ilike.%${term}%,survey_no.ilike.%${term}%,notes.ilike.%${term}%,restriction_type.ilike.%${term}%,status.ilike.%${term}%`;
+    const filter = buildOrFilter(query, [
+      "name",
+      "district",
+      "taluk",
+      "village",
+      "survey_no",
+      "notes",
+      "restriction_type",
+      "status",
+    ]);
 
-    const { count: c } = await supabase
-      .from("parcels")
-      .select("id", { count: "exact", head: true })
-      .or(filter);
-    count = c;
-
-    const { data } = await supabase
+    const { data, count: c } = await supabase
       .from("parcels")
       .select(
         "id, name, district, taluk, village, survey_no, restriction_type, area_hectares, last_scanned_at, status, notes",
+        { count: "exact" },
       )
       .or(filter)
-      .order("created_at", { ascending: false })
+      .order(sortColumn, { ascending: sortDir === "asc" })
       .range(offset, offset + PAGE_SIZE - 1);
     parcels = data ?? [];
+    count = c;
   }
+
+  const headerParams = paramsExcept(sp, ["sort", "dir", "page"]);
+  const pageOtherParams = paramsExcept(sp, ["page"]);
 
   return (
     <main className="flex-1 p-6">
@@ -75,18 +90,26 @@ export default async function SearchPage({
       </p>
 
       {query && (
-        <>
-          <ListSearch targetId="search-results-table" noun="results" />
-          <div className="mt-6 overflow-hidden rounded-lg border border-[var(--border)]">
-            <table className="w-full text-sm" id="search-results-table">
+        <div className="mt-6 overflow-hidden rounded-lg border border-[var(--border)]">
+          <table className="w-full text-sm">
             <thead className="bg-[var(--muted)] text-left">
               <tr>
-                <th className="px-4 py-2 font-medium">Name</th>
-                <th className="px-4 py-2 font-medium">Type</th>
+                <th className="px-4 py-2 font-medium">
+                  <SortableHeader label="Name" column="name" activeColumn={sortColumn} activeDir={sortDir} baseUrl="/search" otherParams={headerParams} />
+                </th>
+                <th className="px-4 py-2 font-medium">
+                  <SortableHeader label="Type" column="restriction_type" activeColumn={sortColumn} activeDir={sortDir} baseUrl="/search" otherParams={headerParams} />
+                </th>
                 <th className="px-4 py-2 font-medium">Location</th>
-                <th className="px-4 py-2 font-medium">Survey #</th>
-                <th className="px-4 py-2 font-medium">Area (ha)</th>
-                <th className="px-4 py-2 font-medium">Last scan</th>
+                <th className="px-4 py-2 font-medium">
+                  <SortableHeader label="Survey #" column="survey_no" activeColumn={sortColumn} activeDir={sortDir} baseUrl="/search" otherParams={headerParams} />
+                </th>
+                <th className="px-4 py-2 font-medium">
+                  <SortableHeader label="Area (ha)" column="area_hectares" activeColumn={sortColumn} activeDir={sortDir} baseUrl="/search" otherParams={headerParams} />
+                </th>
+                <th className="px-4 py-2 font-medium">
+                  <SortableHeader label="Last scan" column="last_scanned_at" activeColumn={sortColumn} activeDir={sortDir} baseUrl="/search" otherParams={headerParams} />
+                </th>
                 <th className="px-4 py-2"></th>
               </tr>
             </thead>
@@ -103,7 +126,7 @@ export default async function SearchPage({
                   RESTRICTION_TYPES.find((r) => r.value === p.restriction_type)
                     ?.label ?? p.restriction_type;
                 return (
-                  <tr key={p.id} className="border-t border-[var(--border)]" data-search={searchKey(p.name, type, p.village, p.taluk, p.district, p.survey_no, p.status, p.notes)}>
+                  <tr key={p.id} className="border-t border-[var(--border)]">
                     <td className="px-4 py-2 font-medium">{p.name}</td>
                     <td className="px-4 py-2">{type}</td>
                     <td className="px-4 py-2">{`${p.village}, ${p.taluk}, ${p.district}`}</td>
@@ -127,24 +150,16 @@ export default async function SearchPage({
                   </tr>
                 );
               })}
-              <tr data-no-match style={{ display: "none" }}>
-                <td colSpan={7} className="px-4 py-8 text-center text-[var(--muted-fg)]">
-                  No parcels match your filter.
-                </td>
-              </tr>
             </tbody>
           </table>
 
-          {(() => {
-            const { totalPages } = getPaginationInfo(count, page);
-            const buildUrl = (p: number) => {
-              const params = new URLSearchParams({ q: query });
-              return buildPageUrl("/search", p, params);
-            };
-            return <Pagination page={page} totalPages={totalPages} buildUrl={buildUrl} />;
-          })()}
+          <Pagination
+            page={page}
+            totalPages={getPaginationInfo(count, page).totalPages}
+            baseUrl="/search"
+            searchParams={pageOtherParams}
+          />
         </div>
-        </>
       )}
     </main>
   );

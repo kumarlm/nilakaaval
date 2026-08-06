@@ -5,14 +5,24 @@ import Link from "next/link";
 export function Pagination({
   page,
   totalPages,
-  buildUrl,
+  baseUrl,
+  paramName = "page",
+  searchParams = "",
 }: {
   page: number;
   totalPages: number;
-  buildUrl: (newPage: number) => string;
+  baseUrl: string;
+  paramName?: string;
+  searchParams?: string;
 }) {
   const isPrevDisabled = page === 1;
   const isNextDisabled = page === totalPages;
+
+  const buildUrl = (p: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set(paramName, String(p));
+    return `${baseUrl}?${params.toString()}`;
+  };
 
   return (
     <div className="mt-6 flex items-center justify-between text-sm text-[var(--muted-fg)]">

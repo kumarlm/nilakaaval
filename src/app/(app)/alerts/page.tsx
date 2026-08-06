@@ -1,16 +1,26 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { searchKey } from "@/lib/search-key";
-import { PAGE_SIZE, getPaginationParams, getPaginationInfo, buildPageUrl } from "@/lib/pagination";
-import { ListSearch } from "@/components/list-search";
+import { buildOrFilter } from "@/lib/list-filter";
+import {
+  PAGE_SIZE,
+  getPaginationParams,
+  getPaginationInfo,
+  getFilterParam,
+  getSortParams,
+  paramsExcept,
+} from "@/lib/pagination";
+import { TableFilter } from "@/components/table-filter";
+import { SortableHeader } from "@/components/sortable-header";
 import { Pagination } from "@/components/pagination";
 import DeleteButton from "@/components/delete-button";
 import { deleteAlertAction } from "@/lib/delete-actions";
 
+const SORTABLE_COLUMNS = ["detected_at", "severity", "change_score", "status"] as const;
+
 export default async function AlertsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; filter?: string; sort?: string; dir?: string }>;
 }) {
   const supabase = await createClient();
   if (!supabase) return null;
@@ -26,16 +36,42 @@ export default async function AlertsPage({
 
   const params = await searchParams;
   const { page, offset } = getPaginationParams(params);
+  const filterTerm = getFilterParam(params);
+  const { column: sortColumn, dir: sortDir } = getSortParams(
+    params,
+    SORTABLE_COLUMNS,
+    "detected_at",
+    "desc",
+  );
 
-  const { count } = await supabase
+  // `!inner` makes the parcels join required so its columns can be matched
+  // in the .or() filter below (PostgREST only allows filtering on embedded
+  // resources when the join is inner).
+  let query = supabase
     .from("alerts")
-    .select("id", { count: "exact", head: true });
-
-  const { data: alerts } = await supabase
-    .from("alerts")
-    .select("id, parcel_id, detected_at, severity, status, change_score, notes, parcels(name, district, village)")
-    .order("detected_at", { ascending: false })
+    .select(
+      "id, parcel_id, detected_at, severity, status, change_score, notes, parcels!inner(name, district, village)",
+      { count: "exact" },
+    );
+  if (filterTerm) {
+    query = query.or(
+      buildOrFilter(filterTerm, [
+        "severity",
+        "status",
+        "notes",
+        "parcels.name",
+        "parcels.district",
+        "parcels.village",
+      ]),
+    );
+  }
+  const { data: alerts, count } = await query
+    .order(sortColumn, { ascending: sortDir === "asc" })
     .range(offset, offset + PAGE_SIZE - 1);
+
+  const headerParams = paramsExcept(params, ["sort", "dir", "page"]);
+  const filterOtherParams = paramsExcept(params, ["filter", "page"]);
+  const pageOtherParams = paramsExcept(params, ["page"]);
 
   return (
     <main className="flex-1 p-6">
@@ -45,17 +81,32 @@ export default async function AlertsPage({
         alert and mark its outcome.
       </p>
 
-      <ListSearch targetId="alerts-table" noun="alerts" />
+      <div className="mt-6">
+        <TableFilter
+          initialValue={filterTerm}
+          baseUrl="/alerts"
+          otherParams={filterOtherParams}
+          noun="alerts"
+        />
+      </div>
 
-      <div className="mt-6 overflow-hidden rounded-lg border border-[var(--border)]">
-        <table className="w-full text-sm" id="alerts-table">
+      <div className="overflow-hidden rounded-lg border border-[var(--border)]">
+        <table className="w-full text-sm">
           <thead className="bg-[var(--muted)] text-left">
             <tr>
-              <th className="px-4 py-2 font-medium">Detected</th>
+              <th className="px-4 py-2 font-medium">
+                <SortableHeader label="Detected" column="detected_at" activeColumn={sortColumn} activeDir={sortDir} baseUrl="/alerts" otherParams={headerParams} />
+              </th>
               <th className="px-4 py-2 font-medium">Parcel</th>
-              <th className="px-4 py-2 font-medium">Severity</th>
-              <th className="px-4 py-2 font-medium">Score</th>
-              <th className="px-4 py-2 font-medium">Status</th>
+              <th className="px-4 py-2 font-medium">
+                <SortableHeader label="Severity" column="severity" activeColumn={sortColumn} activeDir={sortDir} baseUrl="/alerts" otherParams={headerParams} />
+              </th>
+              <th className="px-4 py-2 font-medium">
+                <SortableHeader label="Score" column="change_score" activeColumn={sortColumn} activeDir={sortDir} baseUrl="/alerts" otherParams={headerParams} />
+              </th>
+              <th className="px-4 py-2 font-medium">
+                <SortableHeader label="Status" column="status" activeColumn={sortColumn} activeDir={sortDir} baseUrl="/alerts" otherParams={headerParams} />
+              </th>
               <th className="px-4 py-2"></th>
             </tr>
           </thead>
@@ -63,7 +114,9 @@ export default async function AlertsPage({
             {(alerts ?? []).length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-[var(--muted-fg)]">
-                  No alerts yet — upload two snapshots on a parcel to test, or wait for the daily scan.
+                  {filterTerm
+                    ? `No alerts match "${filterTerm}".`
+                    : "No alerts yet — upload two snapshots on a parcel to test, or wait for the daily scan."}
                 </td>
               </tr>
             ) : null}
@@ -74,7 +127,7 @@ export default async function AlertsPage({
                   | null;
                 const p = Array.isArray(parcel) ? parcel[0] : parcel;
                 return (
-                  <tr key={a.id} className="border-t border-[var(--border)]" data-search={searchKey(a.severity, a.status, a.notes, p?.name, p?.village, p?.district)}>
+                  <tr key={a.id} className="border-t border-[var(--border)]">
                     <td className="px-4 py-2">{new Date(a.detected_at).toLocaleString()}</td>
                     <td className="px-4 py-2">
                       {p ? `${p.name} · ${p.village}, ${p.district}` : "—"}
@@ -103,19 +156,15 @@ export default async function AlertsPage({
                   </tr>
                 );
               })}
-            <tr data-no-match style={{ display: "none" }}>
-              <td colSpan={6} className="px-4 py-8 text-center text-[var(--muted-fg)]">
-                No alerts match your filter.
-              </td>
-            </tr>
           </tbody>
         </table>
 
-        {(() => {
-          const { totalPages } = getPaginationInfo(count, page);
-          const buildUrl = (p: number) => buildPageUrl("/alerts", p, new URLSearchParams());
-          return <Pagination page={page} totalPages={totalPages} buildUrl={buildUrl} />;
-        })()}
+        <Pagination
+          page={page}
+          totalPages={getPaginationInfo(count, page).totalPages}
+          baseUrl="/alerts"
+          searchParams={pageOtherParams}
+        />
       </div>
     </main>
   );
