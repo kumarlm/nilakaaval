@@ -1,9 +1,26 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { searchKey } from "@/lib/search-key";
+import { getSortParams, paramsExcept } from "@/lib/pagination";
 import { ListSearch } from "@/components/list-search";
+import { SortableHeader } from "@/components/sortable-header";
 
-export default async function DashboardPage() {
+const SORTABLE_COLUMNS = ["name", "district", "taluk", "village", "last_scanned_at"] as const;
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sort?: string; dir?: string }>;
+}) {
+  const sp = await searchParams;
+  const { column: sortColumn, dir: sortDir } = getSortParams(
+    sp,
+    SORTABLE_COLUMNS,
+    "created_at",
+    "desc",
+  );
+  const headerParams = paramsExcept(sp, ["sort", "dir"]);
+
   const supabase = await createClient();
   if (!supabase) return null; // layout renders SetupRequired
 
@@ -17,7 +34,7 @@ export default async function DashboardPage() {
       supabase
         .from("parcels")
         .select("id, name, district, taluk, village, last_scanned_at, status")
-        .order("created_at", { ascending: false })
+        .order(sortColumn, { ascending: sortDir === "asc" })
         .limit(5),
     ]);
 
@@ -46,11 +63,21 @@ export default async function DashboardPage() {
           <table className="w-full text-sm" id="recent-parcels-table">
             <thead className="bg-[var(--muted)] text-left">
               <tr>
-                <th className="px-4 py-2 font-medium">Name</th>
-                <th className="px-4 py-2 font-medium">District</th>
-                <th className="px-4 py-2 font-medium">Taluk</th>
-                <th className="px-4 py-2 font-medium">Village</th>
-                <th className="px-4 py-2 font-medium">Last scan</th>
+                <th className="px-4 py-2 font-medium">
+                  <SortableHeader label="Name" column="name" activeColumn={sortColumn} activeDir={sortDir} baseUrl="/dashboard" otherParams={headerParams} includePage={false} />
+                </th>
+                <th className="px-4 py-2 font-medium">
+                  <SortableHeader label="District" column="district" activeColumn={sortColumn} activeDir={sortDir} baseUrl="/dashboard" otherParams={headerParams} includePage={false} />
+                </th>
+                <th className="px-4 py-2 font-medium">
+                  <SortableHeader label="Taluk" column="taluk" activeColumn={sortColumn} activeDir={sortDir} baseUrl="/dashboard" otherParams={headerParams} includePage={false} />
+                </th>
+                <th className="px-4 py-2 font-medium">
+                  <SortableHeader label="Village" column="village" activeColumn={sortColumn} activeDir={sortDir} baseUrl="/dashboard" otherParams={headerParams} includePage={false} />
+                </th>
+                <th className="px-4 py-2 font-medium">
+                  <SortableHeader label="Last scan" column="last_scanned_at" activeColumn={sortColumn} activeDir={sortDir} baseUrl="/dashboard" otherParams={headerParams} includePage={false} />
+                </th>
                 <th className="px-4 py-2"></th>
               </tr>
             </thead>
