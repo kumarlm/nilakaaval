@@ -22,6 +22,20 @@ type DrawState = "idle" | "drawing" | "complete";
 
 type LngLat = [number, number];
 
+function isValidPolygon(g: unknown): g is GeoJSON.Polygon {
+  if (!g || typeof g !== "object") return false;
+  const p = g as GeoJSON.Polygon;
+  if (p.type !== "Polygon" || !Array.isArray(p.coordinates)) return false;
+  const ring = p.coordinates[0];
+  if (!Array.isArray(ring) || ring.length < 4) return false;
+  return ring.every(
+    (c) =>
+      Array.isArray(c) && c.length >= 2 &&
+      Number.isFinite(c[0]) && Number.isFinite(c[1]) &&
+      Math.abs(c[0]) <= 180 && Math.abs(c[1]) <= 90,
+  );
+}
+
 export default function MapClient({
   isAuthority,
   initialParcels,
@@ -38,6 +52,7 @@ export default function MapClient({
   const drawStateRef = useRef<DrawState>("idle");
   const verticesRef = useRef<LngLat[]>([]);
   const hoverRef = useRef<LngLat | null>(null);
+  const highlightIdRef = useRef<string | null>(null);
 
   const [drawState, setDrawState] = useState<DrawState>("idle");
   const [vertexCount, setVertexCount] = useState(0);
@@ -63,6 +78,10 @@ export default function MapClient({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [basemap, setBasemap] = useState<"satellite" | "streets">("satellite");
+
+  const [searchInput, setSearchInput] = useState("");
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [highlightId, setHighlightId] = useState<string | null>(null);
 
   const updateDrawSources = useCallback(() => {
     const map = mapRef.current;
@@ -137,11 +156,12 @@ export default function MapClient({
   // setStyle, since setStyle wipes all custom sources/layers.
   const addAppLayers = useCallback(
     (map: maplibregl.Map) => {
+      const validParcels = initialParcels.filter((p) => isValidPolygon(p.geom));
       map.addSource("parcels", {
         type: "geojson",
         data: {
           type: "FeatureCollection",
-          features: initialParcels.map((p) => ({
+          features: validParcels.map((p) => ({
             type: "Feature",
             geometry: p.geom,
             properties: {
@@ -163,6 +183,13 @@ export default function MapClient({
         type: "line",
         source: "parcels",
         paint: { "line-color": "#fca5a5", "line-width": 2 },
+      });
+      map.addLayer({
+        id: "parcels-highlight",
+        type: "line",
+        source: "parcels",
+        paint: { "line-color": "#f59e0b", "line-width": 4 },
+        filter: ["==", ["get", "id"], highlightIdRef.current ?? ""],
       });
 
       map.on("click", "parcels-fill", (e) => {
@@ -324,22 +351,6 @@ export default function MapClient({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.district]);
 
-  // When district + survey_no together match an existing parcel, zoom to it.
-  useEffect(() => {
-    if (!form.survey_no) return;
-    const map = mapRef.current;
-    if (!map) return;
-    const match = initialParcels.find(
-      (p) =>
-        p.district === form.district &&
-        p.survey_no != null &&
-        p.survey_no.trim().toLowerCase() === form.survey_no.trim().toLowerCase(),
-    );
-    if (!match) return;
-    const centroid = polygonCentroid(match.geom);
-    map.flyTo({ center: centroid, zoom: 15, duration: 1200 });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [form.survey_no, form.district]);
 
   const startDrawing = useCallback(() => {
     drawStateRef.current = "drawing";
@@ -389,6 +400,13 @@ export default function MapClient({
 
   async function onSave() {
     if (!polygon) return;
+    const ha = approxHectares(polygon);
+    if (ha > 50_000) {
+      setError(
+        `Boundary spans ~${Math.round(ha).toLocaleString()} ha — that looks like a mis-click. Redraw it zoomed in.`,
+      );
+      return;
+    }
     setSaving(true);
     setError(null);
     let supabase;
@@ -402,7 +420,7 @@ export default function MapClient({
     const { error } = await supabase.from("parcels").insert({
       ...form,
       geom: polygon,
-      area_hectares: approxHectares(polygon),
+      area_hectares: ha,
     });
     setSaving(false);
     if (error) {
@@ -422,6 +440,47 @@ export default function MapClient({
     router.refresh();
   }
 
+  function handleSearch(query: string) {
+    if (!query.trim()) {
+      setSearchError(null);
+      setHighlightId(null);
+      highlightIdRef.current = null;
+      return;
+    }
+    const validParcels = initialParcels.filter((p) => isValidPolygon(p.geom));
+    const q = query.trim().toLowerCase();
+    const match = validParcels.find(
+      (p) =>
+        (p.survey_no && p.survey_no.toLowerCase() === q) ||
+        p.name.toLowerCase().includes(q) ||
+        p.village.toLowerCase().includes(q),
+    );
+    if (!match) {
+      setSearchError(`No parcel with survey number "${query}".`);
+      setHighlightId(null);
+      highlightIdRef.current = null;
+      return;
+    }
+    setSearchError(null);
+    setHighlightId(match.id);
+    highlightIdRef.current = match.id;
+    const map = mapRef.current;
+    if (map && isValidPolygon(match.geom)) {
+      const centroid = polygonCentroid(match.geom);
+      map.flyTo({ center: centroid, zoom: 16, duration: 1200 });
+    }
+  }
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !map.isStyleLoaded()) return;
+    map.setFilter("parcels-highlight", [
+      "==",
+      ["get", "id"],
+      highlightIdRef.current ?? "",
+    ]);
+  }, [highlightId]);
+
   return (
     <div className="flex-1 flex">
       <div className="flex-1 relative" ref={containerRef}>
@@ -430,6 +489,55 @@ export default function MapClient({
             Click to add a vertex · Double-click or Enter to finish · Esc to cancel
           </div>
         )}
+        <div className="absolute top-3 left-3 z-10 rounded-md border border-[var(--border)] bg-[var(--background)] shadow-sm p-3 w-72">
+          <label className="block text-xs font-medium text-[var(--muted-fg)] mb-2">
+            Search by survey number
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSearch(searchInput);
+                }
+              }}
+              placeholder="e.g. 142/3B"
+              className="flex-1 rounded border border-[var(--border)] bg-transparent px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--primary)]"
+            />
+            <button
+              onClick={() => handleSearch(searchInput)}
+              className="rounded bg-[var(--primary)] px-3 py-1.5 text-sm font-medium text-[var(--primary-fg)] hover:opacity-90"
+            >
+              Search
+            </button>
+          </div>
+          {searchError && (
+            <p className="mt-2 text-xs text-[var(--danger)]">{searchError}</p>
+          )}
+          {highlightId && (
+            <button
+              onClick={() => {
+                setSearchInput("");
+                setSearchError(null);
+                setHighlightId(null);
+                highlightIdRef.current = null;
+                const map = mapRef.current;
+                if (map && map.isStyleLoaded()) {
+                  map.setFilter("parcels-highlight", [
+                    "==",
+                    ["get", "id"],
+                    "",
+                  ]);
+                }
+              }}
+              className="mt-2 text-xs text-[var(--primary)] hover:underline"
+            >
+              Clear highlight
+            </button>
+          )}
+        </div>
         <div className="absolute bottom-3 left-3 z-10 flex rounded-md overflow-hidden border border-[var(--border)] bg-[var(--background)] shadow-sm text-xs font-medium">
           <BasemapBtn
             active={basemap === "satellite"}
