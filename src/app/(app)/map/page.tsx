@@ -14,7 +14,8 @@ export default async function MapPage() {
   const { data: parcels } = await supabase
     .from("parcels")
     .select("id, name, district, taluk, village, survey_no, restriction_type, geom")
-    .eq("status", "active");
+    .eq("status", "active")
+    .not("geom", "is", null);
 
   return (
     <MapClient
